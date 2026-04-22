@@ -7,15 +7,17 @@ export async function packageChromeExtension(projectRoot: string): Promise<{
 }> {
   const sourceManifest = join(projectRoot, "src", "connectors", "chrome-extension", "manifest.json");
   const compiledBackground = join(projectRoot, "dist", "connectors", "chrome-extension", "background.js");
+  const compiledSnapshot = join(projectRoot, "dist", "connectors", "chrome-extension", "snapshot.js");
   const extensionDir = join(projectRoot, "dist", "chrome-extension");
 
   mkdirSync(extensionDir, { recursive: true });
 
   cpSync(sourceManifest, join(extensionDir, "manifest.json"));
   cpSync(compiledBackground, join(extensionDir, "background.js"));
+  cpSync(compiledSnapshot, join(extensionDir, "snapshot.js"));
 
   return {
     extensionDir,
-    files: ["manifest.json", "background.js"],
+    files: ["manifest.json", "background.js", "snapshot.js"],
   };
 }
