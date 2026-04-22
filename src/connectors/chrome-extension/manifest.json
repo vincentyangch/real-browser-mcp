@@ -9,6 +9,7 @@
     "scripting"
   ],
   "host_permissions": [
+    "<all_urls>",
     "http://*/*",
     "https://*/*",
     "http://127.0.0.1/*",

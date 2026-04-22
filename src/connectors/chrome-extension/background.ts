@@ -84,7 +84,7 @@ async function fetchTextWithTimeout(url: string, timeoutMs: number): Promise<str
 async function pollBridgeCommands(): Promise<void> {
   type PendingCommand = {
     id: string;
-    kind: "open_url" | "scan_page";
+    kind: "open_url" | "scan_page" | "capture_screenshot";
     payload: { url?: string };
   };
 
@@ -130,6 +130,21 @@ async function pollBridgeCommands(): Promise<void> {
           title: target.title ?? "",
           text: htmlToText(html),
         }),
+      });
+      return;
+    }
+
+    if (command.kind === "capture_screenshot") {
+      const dataUrl = await chrome.tabs.captureVisibleTab({ format: "png" });
+
+      await reportCommandResult(command.id, {
+        ok: true,
+        result: {
+          dataUrl,
+          url: target.url,
+          title: target.title ?? "",
+          tabId: String(target.id),
+        },
       });
       return;
     }

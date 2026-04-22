@@ -59,3 +59,19 @@ test("BridgeState queues and serves a scan_page command for a connector", () => 
   assert.equal(next?.id, command.id);
   assert.equal(next?.kind, "scan_page");
 });
+
+test("BridgeState queues and serves a capture_screenshot command for a connector", () => {
+  const state = new BridgeState();
+
+  const command = state.enqueueCaptureScreenshot("chrome-extension");
+
+  assert.equal(command.connector, "chrome-extension");
+  assert.equal(command.kind, "capture_screenshot");
+  assert.deepEqual(command.payload, {});
+  assert.equal(command.status, "pending");
+
+  const next = state.takeNextCommand("chrome-extension");
+  assert.ok(next);
+  assert.equal(next?.id, command.id);
+  assert.equal(next?.kind, "capture_screenshot");
+});

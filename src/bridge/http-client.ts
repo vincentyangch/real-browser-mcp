@@ -57,4 +57,19 @@ export class BridgeClient {
 
     return parseJson<{ command: BridgeCommand; result: BridgeCommandResult }>(res);
   }
+
+  async captureScreenshot(connector = "chrome-extension", timeoutMs = 5000): Promise<{
+    command: BridgeCommand;
+    result: BridgeCommandResult;
+  }> {
+    const res = await fetch(`${this.baseUrl}/v1/commands/capture-screenshot`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ connector, timeoutMs }),
+    });
+
+    return parseJson<{ command: BridgeCommand; result: BridgeCommandResult }>(res);
+  }
 }

@@ -21,6 +21,7 @@ test("packageChromeExtension creates a loadable unpacked extension folder", asyn
       name: "real-browser-mcp connector",
       version: "0.1.0",
       permissions: ["tabs", "alarms", "scripting"],
+      host_permissions: ["<all_urls>"],
       background: {
         service_worker: "background.js",
         type: "module",
@@ -59,6 +60,7 @@ test("packageChromeExtension creates a loadable unpacked extension folder", asyn
   assert.match(readFileSync(join(result.extensionDir, "tab-target.js"), "utf8"), /pickTargetTab/);
   assert.match(readFileSync(join(result.extensionDir, "page-scan.js"), "utf8"), /buildPageScanResult/);
   assert.match(readFileSync(join(result.extensionDir, "manifest.json"), "utf8"), /real-browser-mcp connector/);
+  assert.match(readFileSync(join(result.extensionDir, "manifest.json"), "utf8"), /<all_urls>/);
   assert.match(readFileSync(join(result.extensionDir, "manifest.json"), "utf8"), /scripting/);
   assert.ok(!readFileSync(join(result.extensionDir, "manifest.json"), "utf8").includes("content_scripts"));
 });

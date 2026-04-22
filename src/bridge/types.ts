@@ -1,6 +1,6 @@
 export type BrowserKind = "chrome";
 export type ConnectorMode = "unconfigured" | "attached-session";
-export type BridgeCommandKind = "open_url" | "scan_page";
+export type BridgeCommandKind = "open_url" | "scan_page" | "capture_screenshot";
 
 export type BrowserTab = {
   id: string;
@@ -54,7 +54,12 @@ export type ScanPageCommand = BridgeCommandBase & {
   payload: {};
 };
 
-export type BridgeCommand = OpenUrlCommand | ScanPageCommand;
+export type CaptureScreenshotCommand = BridgeCommandBase & {
+  kind: "capture_screenshot";
+  payload: {};
+};
+
+export type BridgeCommand = OpenUrlCommand | ScanPageCommand | CaptureScreenshotCommand;
 
 export type BridgeCommandResult = {
   ok: boolean;

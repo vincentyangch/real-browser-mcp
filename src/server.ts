@@ -1,8 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { z } from "zod";
 import { BridgeClient } from "./bridge/http-client.js";
 import { DEFAULT_BRIDGE_HOST, DEFAULT_BRIDGE_PORT } from "./config.js";
+import { savePngDataUrl } from "./media/screenshot-file.js";
 
 type FailureResult = {
   ok: false;
@@ -86,12 +89,28 @@ export async function startServer(): Promise<void> {
     {
       description: "Capture a screenshot of the current page in the attached browser session.",
     },
-    async () =>
-      textResult(
-        unimplemented(
-          "capture_screenshot not implemented yet. Next step: add a browser connector screenshot API.",
-        ),
-      ),
+    async () => {
+      const response = await bridge.captureScreenshot();
+      const dataUrl = response.result.result?.dataUrl;
+
+      if (!response.result.ok || typeof dataUrl !== "string") {
+        return textResult(response);
+      }
+
+      const outputDir = join(process.cwd(), "artifacts", "screenshots");
+      mkdirSync(outputDir, { recursive: true });
+
+      const savedScreenshot = savePngDataUrl({
+        dataUrl,
+        outputDir,
+        filenamePrefix: "real-browser-mcp-shot",
+      });
+
+      return textResult({
+        ...response,
+        savedScreenshot,
+      });
+    },
   );
 
   const transport = new StdioServerTransport();
