@@ -1,5 +1,5 @@
 import { bridgeBaseUrl } from "../config.js";
-import type { BridgeSnapshotResponse, BridgeStatus } from "./types.js";
+import type { BridgeCommand, BridgeCommandResult, BridgeSnapshotResponse, BridgeStatus } from "./types.js";
 
 async function parseJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -26,5 +26,20 @@ export class BridgeClient {
   async getTabs(): Promise<BridgeSnapshotResponse> {
     const res = await fetch(`${this.baseUrl}/v1/tabs`);
     return parseJson<BridgeSnapshotResponse>(res);
+  }
+
+  async openUrl(url: string, connector = "chrome-extension", timeoutMs = 5000): Promise<{
+    command: BridgeCommand;
+    result: BridgeCommandResult;
+  }> {
+    const res = await fetch(`${this.baseUrl}/v1/commands/open-url`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ connector, url, timeoutMs }),
+    });
+
+    return parseJson<{ command: BridgeCommand; result: BridgeCommandResult }>(res);
   }
 }

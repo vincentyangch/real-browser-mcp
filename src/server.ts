@@ -70,12 +70,7 @@ export async function startServer(): Promise<void> {
         url: z.string().url(),
       },
     },
-    async ({ url }) =>
-      textResult(
-        unimplemented(
-          `open_url not implemented yet for '${url}'. Next step: add a bridge command for controlled navigation.`,
-        ),
-      ),
+    async ({ url }) => textResult(await bridge.openUrl(url)),
   );
 
   server.registerTool(

@@ -1,5 +1,6 @@
 export type BrowserKind = "chrome";
 export type ConnectorMode = "unconfigured" | "attached-session";
+export type BridgeCommandKind = "open_url";
 
 export type BrowserTab = {
   id: string;
@@ -32,4 +33,21 @@ export type BridgeStatus = {
 export type BridgeSnapshotResponse = {
   status: BridgeStatus;
   tabs: BrowserTab[];
+};
+
+export type BridgeCommand = {
+  id: string;
+  connector: string;
+  kind: BridgeCommandKind;
+  status: "pending" | "dispatched" | "completed" | "failed";
+  payload: {
+    url: string;
+  };
+  createdAt: string;
+};
+
+export type BridgeCommandResult = {
+  ok: boolean;
+  result?: Record<string, unknown>;
+  error?: string;
 };

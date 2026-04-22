@@ -27,6 +27,11 @@ test("packageChromeExtension creates a loadable unpacked extension folder", asyn
     }, null, 2),
     "utf8",
   );
+  writeFileSync(
+    join(srcDir, "content.js"),
+    'console.log("content ready");\n',
+    "utf8",
+  );
 
   writeFileSync(
     join(compiledDir, "background.js"),
@@ -42,8 +47,9 @@ test("packageChromeExtension creates a loadable unpacked extension folder", asyn
   const result = await packageChromeExtension(root);
 
   assert.equal(result.extensionDir, join(root, "dist", "chrome-extension"));
-  assert.deepEqual(result.files.sort(), ["background.js", "manifest.json", "snapshot.js"]);
+  assert.deepEqual(result.files.sort(), ["background.js", "content.js", "manifest.json", "snapshot.js"]);
   assert.match(readFileSync(join(result.extensionDir, "background.js"), "utf8"), /background ready/);
+  assert.match(readFileSync(join(result.extensionDir, "content.js"), "utf8"), /content ready/);
   assert.match(readFileSync(join(result.extensionDir, "snapshot.js"), "utf8"), /buildConnectorSnapshot/);
   assert.match(readFileSync(join(result.extensionDir, "manifest.json"), "utf8"), /real-browser-mcp connector/);
 });

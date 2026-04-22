@@ -36,6 +36,9 @@ The local bridge currently exposes:
 - `GET /health`
 - `GET /v1/tabs`
 - `POST /v1/connector/snapshot`
+- `GET /v1/connector/next-command?connector=<name>`
+- `POST /v1/connector/command-result`
+- `POST /v1/commands/open-url`
 
 `POST /v1/connector/snapshot` is the first browser-connector integration point. A future browser-side connector should send:
 
@@ -61,6 +64,7 @@ The local bridge currently exposes:
 The repo now includes a first Chrome extension connector scaffold in:
 
 - `src/connectors/chrome-extension/background.ts`
+- `src/connectors/chrome-extension/content.ts`
 - `src/connectors/chrome-extension/snapshot.ts`
 - `src/connectors/chrome-extension/manifest.json`
 
@@ -69,11 +73,13 @@ Current behavior:
 1. Query open `http` / `https` tabs
 2. Map them into the bridge snapshot format
 3. POST snapshots to the local bridge on install/startup/tab changes
+4. Poll bridge commands from visible tabs
+5. Execute `open_url` on the sender tab and report the result back to the bridge
 
 Current limitation:
 
 1. The unpacked extension folder is now generated at `dist/chrome-extension/`
-2. It still only publishes tab snapshots
+2. Command execution currently supports only `open_url`
 3. It intentionally does not expose clicks, JS execution, cookies, or CDP
 
 ## Initial Scope

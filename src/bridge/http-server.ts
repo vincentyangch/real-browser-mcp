@@ -1,12 +1,15 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { BridgeState } from "./state.js";
-import type { ConnectorSnapshot } from "./types.js";
+import type { BridgeCommandResult, ConnectorSnapshot } from "./types.js";
 
 function sendJson(res: ServerResponse, statusCode: number, payload: unknown): void {
   const text = JSON.stringify(payload, null, 2);
   res.writeHead(statusCode, {
     "content-type": "application/json; charset=utf-8",
     "content-length": Buffer.byteLength(text),
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+    "access-control-allow-headers": "content-type",
   });
   res.end(text);
 }
@@ -30,7 +33,18 @@ export async function startBridgeServer(host: string, port: number): Promise<voi
   const server = createServer(async (req, res) => {
     try {
       const method = req.method ?? "GET";
-      const url = req.url ?? "/";
+      const parsedUrl = new URL(req.url ?? "/", `http://${host}:${port}`);
+      const url = parsedUrl.pathname;
+
+      if (method === "OPTIONS") {
+        res.writeHead(204, {
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET, POST, OPTIONS",
+          "access-control-allow-headers": "content-type",
+        });
+        res.end();
+        return;
+      }
 
       if (method === "GET" && url === "/health") {
         sendJson(res, 200, state.getStatus());
@@ -39,6 +53,17 @@ export async function startBridgeServer(host: string, port: number): Promise<voi
 
       if (method === "GET" && url === "/v1/tabs") {
         sendJson(res, 200, state.getSnapshotResponse());
+        return;
+      }
+
+      if (method === "GET" && url === "/v1/connector/next-command") {
+        const connector = parsedUrl.searchParams.get("connector");
+        if (!connector) {
+          sendJson(res, 400, { ok: false, error: "connector is required" });
+          return;
+        }
+
+        sendJson(res, 200, { command: state.takeNextCommand(connector) });
         return;
       }
 
@@ -67,6 +92,54 @@ export async function startBridgeServer(host: string, port: number): Promise<voi
         };
 
         sendJson(res, 200, state.applySnapshot(snapshot));
+        return;
+      }
+
+      if (method === "POST" && url === "/v1/connector/command-result") {
+        const body = (await readJson(req)) as {
+          commandId?: string;
+          ok?: boolean;
+          result?: Record<string, unknown>;
+          error?: string;
+        };
+
+        if (!body.commandId || typeof body.ok !== "boolean") {
+          sendJson(res, 400, {
+            ok: false,
+            error: "commandId and ok are required",
+          });
+          return;
+        }
+
+        const result: BridgeCommandResult = {
+          ok: body.ok,
+          result: body.result,
+          error: body.error,
+        };
+
+        state.completeCommand(body.commandId, result);
+        sendJson(res, 200, { ok: true });
+        return;
+      }
+
+      if (method === "POST" && url === "/v1/commands/open-url") {
+        const body = (await readJson(req)) as {
+          connector?: string;
+          url?: string;
+          timeoutMs?: number;
+        };
+
+        if (!body.url) {
+          sendJson(res, 400, { ok: false, error: "url is required" });
+          return;
+        }
+
+        const connector = body.connector ?? "chrome-extension";
+        const timeoutMs = body.timeoutMs ?? 5000;
+        const command = state.enqueueOpenUrl(connector, body.url);
+        const result = await state.waitForCommandResult(command.id, timeoutMs);
+
+        sendJson(res, 200, { command, result });
         return;
       }
 
