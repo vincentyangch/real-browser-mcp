@@ -21,11 +21,13 @@ Initial goals:
 npm run dev -- bridge-serve
 npm run dev -- doctor
 npm run dev -- mcp
+npm run build
 ```
 
 - `bridge-serve`: starts the local bridge server on `127.0.0.1:18767`
 - `doctor`: queries the local bridge and prints status JSON
 - `mcp`: starts the stdio MCP server
+- `build`: compiles the server and packages a loadable unpacked extension into `dist/chrome-extension/`
 
 ## Current Bridge Contract
 
@@ -53,6 +55,26 @@ The local bridge currently exposes:
   "updatedAt": "2026-04-21T21:20:00.000Z"
 }
 ```
+
+## Connector Scaffold
+
+The repo now includes a first Chrome extension connector scaffold in:
+
+- `src/connectors/chrome-extension/background.ts`
+- `src/connectors/chrome-extension/snapshot.ts`
+- `src/connectors/chrome-extension/manifest.json`
+
+Current behavior:
+
+1. Query open `http` / `https` tabs
+2. Map them into the bridge snapshot format
+3. POST snapshots to the local bridge on install/startup/tab changes
+
+Current limitation:
+
+1. The unpacked extension folder is now generated at `dist/chrome-extension/`
+2. It still only publishes tab snapshots
+3. It intentionally does not expose clicks, JS execution, cookies, or CDP
 
 ## Initial Scope
 

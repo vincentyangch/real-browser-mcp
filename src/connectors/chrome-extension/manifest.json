@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "real-browser-mcp connector",
+  "version": "0.1.0",
+  "description": "Publishes safe real-browser tab snapshots to the local real-browser-mcp bridge.",
+  "permissions": [
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
+}
