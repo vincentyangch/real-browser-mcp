@@ -43,3 +43,19 @@ test("BridgeState resolves a pending command result", async () => {
     tabId: "123",
   });
 });
+
+test("BridgeState queues and serves a scan_page command for a connector", () => {
+  const state = new BridgeState();
+
+  const command = state.enqueueScanPage("chrome-extension");
+
+  assert.equal(command.connector, "chrome-extension");
+  assert.equal(command.kind, "scan_page");
+  assert.deepEqual(command.payload, {});
+  assert.equal(command.status, "pending");
+
+  const next = state.takeNextCommand("chrome-extension");
+  assert.ok(next);
+  assert.equal(next?.id, command.id);
+  assert.equal(next?.kind, "scan_page");
+});

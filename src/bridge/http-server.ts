@@ -143,6 +143,21 @@ export async function startBridgeServer(host: string, port: number): Promise<voi
         return;
       }
 
+      if (method === "POST" && url === "/v1/commands/scan-page") {
+        const body = (await readJson(req)) as {
+          connector?: string;
+          timeoutMs?: number;
+        };
+
+        const connector = body.connector ?? "chrome-extension";
+        const timeoutMs = body.timeoutMs ?? 5000;
+        const command = state.enqueueScanPage(connector);
+        const result = await state.waitForCommandResult(command.id, timeoutMs);
+
+        sendJson(res, 200, { command, result });
+        return;
+      }
+
       notFound(res);
     } catch (err) {
       sendJson(res, 500, {

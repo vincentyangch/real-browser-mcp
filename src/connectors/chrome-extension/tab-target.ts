@@ -1,6 +1,7 @@
 export type TabLike = {
   id?: number;
   url?: string;
+  title?: string;
   active?: boolean;
 };
 

@@ -1,5 +1,6 @@
 /// <reference types="chrome" />
 
+import { buildPageScanResult, htmlToText } from "./page-scan.js";
 import { buildConnectorSnapshot } from "./snapshot.js";
 import { pickTargetTab } from "./tab-target.js";
 
@@ -62,48 +63,89 @@ async function reportCommandResult(commandId: string, payload: {
   });
 }
 
+async function fetchTextWithTimeout(url: string, timeoutMs: number): Promise<string> {
+  const controller = new AbortController();
+  const timer = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      credentials: "include",
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch target page: HTTP ${response.status}`);
+    }
+    return await response.text();
+  } finally {
+    globalThis.clearTimeout(timer);
+  }
+}
+
 async function pollBridgeCommands(): Promise<void> {
+  type PendingCommand = {
+    id: string;
+    kind: "open_url" | "scan_page";
+    payload: { url?: string };
+  };
+
+  let command: PendingCommand | null = null;
+
   try {
     const response = await fetch(NEXT_COMMAND_URL);
-    const body = await response.json() as {
-      command: {
-        id: string;
-        kind: "open_url";
-        payload: { url: string };
-      } | null;
-    };
+    const body = await response.json() as { command: PendingCommand | null };
 
-    if (!body.command) return;
+    command = body.command;
+    if (!command) return;
 
     const tabs = await listEligibleTabs();
     const target = pickTargetTab(tabs);
 
-    if (!target?.id) {
-      await reportCommandResult(body.command.id, {
+    if (!target?.id || !target.url) {
+      await reportCommandResult(command.id, {
         ok: false,
         error: "No supported browser tab available for command execution",
       });
       return;
     }
 
-    if (body.command.kind === "open_url") {
-      await chrome.tabs.update(target.id, { url: body.command.payload.url, active: true });
-      await reportCommandResult(body.command.id, {
+    if (command.kind === "open_url") {
+      await chrome.tabs.update(target.id, { url: command.payload.url, active: true });
+      await reportCommandResult(command.id, {
         ok: true,
         result: {
-          url: body.command.payload.url,
+          url: command.payload.url,
           tabId: String(target.id),
         },
       });
       return;
     }
 
-    await reportCommandResult(body.command.id, {
+    if (command.kind === "scan_page") {
+      const html = await fetchTextWithTimeout(target.url, 5000);
+
+      await reportCommandResult(command.id, {
+        ok: true,
+        result: buildPageScanResult({
+          url: target.url ?? "",
+          title: target.title ?? "",
+          text: htmlToText(html),
+        }),
+      });
+      return;
+    }
+
+    await reportCommandResult(command.id, {
       ok: false,
-      error: `Unsupported command kind: ${body.command.kind}`,
+      error: `Unsupported command kind: ${command.kind}`,
     });
   } catch (err) {
     console.warn("[real-browser-mcp][chrome-extension] bridge poll failed:", err);
+    if (command) {
+      await reportCommandResult(command.id, {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 }
 

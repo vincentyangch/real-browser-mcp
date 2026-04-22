@@ -78,10 +78,7 @@ export async function startServer(): Promise<void> {
     {
       description: "Read the current page content from the attached browser session.",
     },
-    async () =>
-      textResult(
-        unimplemented("scan_page not implemented yet. Next step: add a browser connector read API."),
-      ),
+    async () => textResult(await bridge.scanPage()),
   );
 
   server.registerTool(

@@ -83,6 +83,23 @@ export class BridgeState {
     return command;
   }
 
+  enqueueScanPage(connector: string): BridgeCommand {
+    const command: BridgeCommand = {
+      id: randomUUID(),
+      connector,
+      kind: "scan_page",
+      status: "pending",
+      payload: {},
+      createdAt: new Date().toISOString(),
+    };
+
+    const queue = this.queuedCommands.get(connector) ?? [];
+    queue.push(command);
+    this.queuedCommands.set(connector, queue);
+    this.commandsById.set(command.id, command);
+    return command;
+  }
+
   takeNextCommand(connector: string): BridgeCommand | null {
     const queue = this.queuedCommands.get(connector);
     if (!queue || queue.length === 0) return null;
