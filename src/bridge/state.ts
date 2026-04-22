@@ -11,6 +11,12 @@ import type {
 const BRIDGE_VERSION = "0.1.0";
 
 export class BridgeState {
+  constructor(
+    private readonly options: {
+      statusNotes?: string[];
+    } = {},
+  ) {}
+
   private snapshot: ConnectorSnapshot | null = null;
   private readonly queuedCommands = new Map<string, BridgeCommand[]>();
   private readonly commandsById = new Map<string, BridgeCommand>();
@@ -25,6 +31,13 @@ export class BridgeState {
 
   getStatus(): BridgeStatus {
     const tabs = this.snapshot?.tabs ?? [];
+    const configuredNotes = this.options.statusNotes ?? [];
+    const lifecycleNotes = this.snapshot
+      ? []
+      : [
+          "Bridge server is running, but no browser connector has registered a session snapshot yet.",
+          "Next step: implement a browser-side connector that posts tab snapshots to /v1/connector/snapshot.",
+        ];
 
     return {
       ok: true,
@@ -35,12 +48,7 @@ export class BridgeState {
       connector: this.snapshot?.connector ?? null,
       tabCount: tabs.length,
       updatedAt: this.snapshot?.updatedAt ?? null,
-      notes: this.snapshot
-        ? []
-        : [
-            "Bridge server is running, but no browser connector has registered a session snapshot yet.",
-            "Next step: implement a browser-side connector that posts tab snapshots to /v1/connector/snapshot.",
-          ],
+      notes: [...configuredNotes, ...lifecycleNotes],
     };
   }
 
@@ -55,6 +63,17 @@ export class BridgeState {
     };
   }
 
+  getPreferredTab(): BrowserTab | null {
+    const tabs = this.getTabs();
+    if (tabs.length === 0) return null;
+
+    return tabs.find((tab) => tab.active) ?? tabs[0] ?? null;
+  }
+
+  findTabById(tabId: string): BrowserTab | null {
+    return this.getTabs().find((tab) => tab.id === tabId) ?? null;
+  }
+
   applySnapshot(snapshot: ConnectorSnapshot): BridgeSnapshotResponse {
     this.snapshot = {
       ...snapshot,
@@ -66,55 +85,89 @@ export class BridgeState {
     return this.getSnapshotResponse();
   }
 
+  private enqueueCommand(command: BridgeCommand): BridgeCommand {
+    const queue = this.queuedCommands.get(command.connector) ?? [];
+    queue.push(command);
+    this.queuedCommands.set(command.connector, queue);
+    this.commandsById.set(command.id, command);
+    return command;
+  }
+
   enqueueOpenUrl(connector: string, url: string): BridgeCommand {
-    const command: BridgeCommand = {
+    return this.enqueueCommand({
       id: randomUUID(),
       connector,
       kind: "open_url",
       status: "pending",
       payload: { url },
       createdAt: new Date().toISOString(),
-    };
+    });
+  }
 
-    const queue = this.queuedCommands.get(connector) ?? [];
-    queue.push(command);
-    this.queuedCommands.set(connector, queue);
-    this.commandsById.set(command.id, command);
-    return command;
+  enqueueSwitchTab(connector: string, tabId: string): BridgeCommand {
+    return this.enqueueCommand({
+      id: randomUUID(),
+      connector,
+      kind: "switch_tab",
+      status: "pending",
+      payload: { tabId },
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  enqueueClick(connector: string, text: string, exact: boolean): BridgeCommand {
+    return this.enqueueCommand({
+      id: randomUUID(),
+      connector,
+      kind: "click",
+      status: "pending",
+      payload: { text, exact },
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  enqueueScroll(connector: string, direction: "up" | "down", pages: number): BridgeCommand {
+    return this.enqueueCommand({
+      id: randomUUID(),
+      connector,
+      kind: "scroll",
+      status: "pending",
+      payload: { direction, pages },
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  enqueueType(connector: string, text: string, clear: boolean): BridgeCommand {
+    return this.enqueueCommand({
+      id: randomUUID(),
+      connector,
+      kind: "type",
+      status: "pending",
+      payload: { text, clear },
+      createdAt: new Date().toISOString(),
+    });
   }
 
   enqueueScanPage(connector: string): BridgeCommand {
-    const command: BridgeCommand = {
+    return this.enqueueCommand({
       id: randomUUID(),
       connector,
       kind: "scan_page",
       status: "pending",
       payload: {},
       createdAt: new Date().toISOString(),
-    };
-
-    const queue = this.queuedCommands.get(connector) ?? [];
-    queue.push(command);
-    this.queuedCommands.set(connector, queue);
-    this.commandsById.set(command.id, command);
-    return command;
+    });
   }
 
   enqueueCaptureScreenshot(connector: string): BridgeCommand {
-    const command: BridgeCommand = {
+    return this.enqueueCommand({
       id: randomUUID(),
       connector,
       kind: "capture_screenshot",
       status: "pending",
       payload: {},
       createdAt: new Date().toISOString(),
-    };
-
-    const queue = this.queuedCommands.get(connector) ?? [];
-    queue.push(command);
-    this.queuedCommands.set(connector, queue);
-    this.commandsById.set(command.id, command);
-    return command;
+    });
   }
 
   takeNextCommand(connector: string): BridgeCommand | null {

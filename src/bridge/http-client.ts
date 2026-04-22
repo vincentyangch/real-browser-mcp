@@ -43,6 +43,81 @@ export class BridgeClient {
     return parseJson<{ command: BridgeCommand; result: BridgeCommandResult }>(res);
   }
 
+  async switchTab(tabId: string, connector = "chrome-extension", timeoutMs = 5000): Promise<{
+    command: BridgeCommand;
+    result: BridgeCommandResult;
+  }> {
+    const res = await fetch(`${this.baseUrl}/v1/commands/switch-tab`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ connector, tabId, timeoutMs }),
+    });
+
+    return parseJson<{ command: BridgeCommand; result: BridgeCommandResult }>(res);
+  }
+
+  async click(
+    text: string,
+    exact = false,
+    connector = "chrome-extension",
+    timeoutMs = 5000,
+  ): Promise<{
+    command: BridgeCommand;
+    result: BridgeCommandResult;
+  }> {
+    const res = await fetch(`${this.baseUrl}/v1/commands/click`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ connector, text, exact, timeoutMs }),
+    });
+
+    return parseJson<{ command: BridgeCommand; result: BridgeCommandResult }>(res);
+  }
+
+  async scroll(
+    direction: "up" | "down",
+    pages = 1,
+    connector = "chrome-extension",
+    timeoutMs = 5000,
+  ): Promise<{
+    command: BridgeCommand;
+    result: BridgeCommandResult;
+  }> {
+    const res = await fetch(`${this.baseUrl}/v1/commands/scroll`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ connector, direction, pages, timeoutMs }),
+    });
+
+    return parseJson<{ command: BridgeCommand; result: BridgeCommandResult }>(res);
+  }
+
+  async type(
+    text: string,
+    clear = false,
+    connector = "chrome-extension",
+    timeoutMs = 5000,
+  ): Promise<{
+    command: BridgeCommand;
+    result: BridgeCommandResult;
+  }> {
+    const res = await fetch(`${this.baseUrl}/v1/commands/type`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ connector, text, clear, timeoutMs }),
+    });
+
+    return parseJson<{ command: BridgeCommand; result: BridgeCommandResult }>(res);
+  }
+
   async scanPage(connector = "chrome-extension", timeoutMs = 5000): Promise<{
     command: BridgeCommand;
     result: BridgeCommandResult;

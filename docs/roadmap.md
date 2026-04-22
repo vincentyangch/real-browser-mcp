@@ -14,6 +14,7 @@
 
 1. Page interaction primitives
 2. Domain allow/deny integration hooks
+   Status: initial bridge-local env-driven enforcement is implemented
 3. Better browser-side structured extraction
 4. CCBuddy integration smoke test
 

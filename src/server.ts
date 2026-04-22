@@ -57,12 +57,7 @@ export async function startServer(): Promise<void> {
         tabId: z.string(),
       },
     },
-    async ({ tabId }) =>
-      textResult(
-        unimplemented(
-          `switch_tab not implemented yet for tab '${tabId}'. Next step: add a bridge command for active-tab selection.`,
-        ),
-      ),
+    async ({ tabId }) => textResult(await bridge.switchTab(tabId)),
   );
 
   server.registerTool(
@@ -74,6 +69,42 @@ export async function startServer(): Promise<void> {
       },
     },
     async ({ url }) => textResult(await bridge.openUrl(url)),
+  );
+
+  server.registerTool(
+    "browser_click",
+    {
+      description: "Click the first visible interactive element whose text matches the provided text.",
+      inputSchema: {
+        text: z.string().min(1),
+        exact: z.boolean().optional(),
+      },
+    },
+    async ({ text, exact }) => textResult(await bridge.click(text, exact ?? false)),
+  );
+
+  server.registerTool(
+    "browser_scroll",
+    {
+      description: "Scroll the current page up or down by a number of viewport pages.",
+      inputSchema: {
+        direction: z.enum(["up", "down"]),
+        pages: z.number().positive().optional(),
+      },
+    },
+    async ({ direction, pages }) => textResult(await bridge.scroll(direction, pages ?? 1)),
+  );
+
+  server.registerTool(
+    "browser_type",
+    {
+      description: "Type text into the currently focused editable element on the active page.",
+      inputSchema: {
+        text: z.string().min(1),
+        clear: z.boolean().optional(),
+      },
+    },
+    async ({ text, clear }) => textResult(await bridge.type(text, clear ?? false)),
   );
 
   server.registerTool(

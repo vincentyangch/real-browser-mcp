@@ -10,9 +10,15 @@ function isSupportedBrowserUrl(url: string | undefined): boolean {
   return url.startsWith("https://") || url.startsWith("http://");
 }
 
-export function pickTargetTab(tabs: TabLike[]): TabLike | null {
+export function pickTargetTab<T extends TabLike>(tabs: T[]): T | null {
   const supported = tabs.filter((tab) => isSupportedBrowserUrl(tab.url));
   if (supported.length === 0) return null;
 
   return supported.find((tab) => tab.active) ?? supported[0] ?? null;
+}
+
+export function findTabById<T extends TabLike>(tabs: T[], tabId: string): T | null {
+  return (
+    tabs.find((tab) => isSupportedBrowserUrl(tab.url) && String(tab.id) === tabId) ?? null
+  );
 }

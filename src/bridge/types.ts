@@ -1,6 +1,13 @@
 export type BrowserKind = "chrome";
 export type ConnectorMode = "unconfigured" | "attached-session";
-export type BridgeCommandKind = "open_url" | "scan_page" | "capture_screenshot";
+export type BridgeCommandKind =
+  | "open_url"
+  | "switch_tab"
+  | "click"
+  | "scroll"
+  | "type"
+  | "scan_page"
+  | "capture_screenshot";
 
 export type BrowserTab = {
   id: string;
@@ -49,6 +56,37 @@ export type OpenUrlCommand = BridgeCommandBase & {
   };
 };
 
+export type SwitchTabCommand = BridgeCommandBase & {
+  kind: "switch_tab";
+  payload: {
+    tabId: string;
+  };
+};
+
+export type ClickCommand = BridgeCommandBase & {
+  kind: "click";
+  payload: {
+    text: string;
+    exact: boolean;
+  };
+};
+
+export type ScrollCommand = BridgeCommandBase & {
+  kind: "scroll";
+  payload: {
+    direction: "up" | "down";
+    pages: number;
+  };
+};
+
+export type TypeCommand = BridgeCommandBase & {
+  kind: "type";
+  payload: {
+    text: string;
+    clear: boolean;
+  };
+};
+
 export type ScanPageCommand = BridgeCommandBase & {
   kind: "scan_page";
   payload: {};
@@ -59,7 +97,14 @@ export type CaptureScreenshotCommand = BridgeCommandBase & {
   payload: {};
 };
 
-export type BridgeCommand = OpenUrlCommand | ScanPageCommand | CaptureScreenshotCommand;
+export type BridgeCommand =
+  | OpenUrlCommand
+  | SwitchTabCommand
+  | ClickCommand
+  | ScrollCommand
+  | TypeCommand
+  | ScanPageCommand
+  | CaptureScreenshotCommand;
 
 export type BridgeCommandResult = {
   ok: boolean;

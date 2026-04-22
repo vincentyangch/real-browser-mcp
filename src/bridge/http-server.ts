@@ -1,6 +1,11 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { DEFAULT_DOMAIN_POLICY } from "../config.js";
+import {
+  describeDomainPolicy,
+  evaluateDomainPolicy,
+} from "../policy/domain-policy.js";
 import { BridgeState } from "./state.js";
-import type { BridgeCommandResult, ConnectorSnapshot } from "./types.js";
+import type { BridgeCommand, BridgeCommandResult, ConnectorSnapshot } from "./types.js";
 
 function sendJson(res: ServerResponse, statusCode: number, payload: unknown): void {
   const text = JSON.stringify(payload, null, 2);
@@ -27,8 +32,49 @@ function notFound(res: ServerResponse): void {
   sendJson(res, 404, { ok: false, error: "not found" });
 }
 
+function immediateFailure(
+  command: BridgeCommand,
+  error: string,
+): {
+  command: BridgeCommand;
+  result: BridgeCommandResult;
+} {
+  return {
+    command: {
+      ...command,
+      status: "failed",
+    },
+    result: {
+      ok: false,
+      error,
+    },
+  };
+}
+
 export async function startBridgeServer(host: string, port: number): Promise<void> {
-  const state = new BridgeState();
+  const policySummary = describeDomainPolicy(DEFAULT_DOMAIN_POLICY);
+  const state = new BridgeState({
+    statusNotes: policySummary ? [policySummary] : [],
+  });
+
+  const enforceUrlPolicy = (command: BridgeCommand, url: string) => {
+    const decision = evaluateDomainPolicy(DEFAULT_DOMAIN_POLICY, url);
+    if (decision.ok) return null;
+
+    return immediateFailure(command, decision.reason);
+  };
+
+  const enforcePreferredTabPolicy = (command: BridgeCommand) => {
+    const tab = state.getPreferredTab();
+    if (!tab?.url) {
+      return immediateFailure(command, "No supported browser tab available for command execution");
+    }
+
+    const denied = enforceUrlPolicy(command, tab.url);
+    if (denied) return denied;
+
+    return null;
+  };
 
   const server = createServer(async (req, res) => {
     try {
@@ -137,6 +183,124 @@ export async function startBridgeServer(host: string, port: number): Promise<voi
         const connector = body.connector ?? "chrome-extension";
         const timeoutMs = body.timeoutMs ?? 5000;
         const command = state.enqueueOpenUrl(connector, body.url);
+        const denied = enforceUrlPolicy(command, body.url);
+        if (denied) {
+          sendJson(res, 200, denied);
+          return;
+        }
+        const result = await state.waitForCommandResult(command.id, timeoutMs);
+
+        sendJson(res, 200, { command, result });
+        return;
+      }
+
+      if (method === "POST" && url === "/v1/commands/switch-tab") {
+        const body = (await readJson(req)) as {
+          connector?: string;
+          tabId?: string;
+          timeoutMs?: number;
+        };
+
+        if (!body.tabId) {
+          sendJson(res, 400, { ok: false, error: "tabId is required" });
+          return;
+        }
+
+        const connector = body.connector ?? "chrome-extension";
+        const timeoutMs = body.timeoutMs ?? 5000;
+        const command = state.enqueueSwitchTab(connector, body.tabId);
+        const targetTab = state.findTabById(body.tabId);
+        if (!targetTab?.url) {
+          sendJson(res, 200, immediateFailure(command, `Tab '${body.tabId}' is not available in the attached browser session`));
+          return;
+        }
+
+        const denied = enforceUrlPolicy(command, targetTab.url);
+        if (denied) {
+          sendJson(res, 200, denied);
+          return;
+        }
+        const result = await state.waitForCommandResult(command.id, timeoutMs);
+
+        sendJson(res, 200, { command, result });
+        return;
+      }
+
+      if (method === "POST" && url === "/v1/commands/click") {
+        const body = (await readJson(req)) as {
+          connector?: string;
+          text?: string;
+          exact?: boolean;
+          timeoutMs?: number;
+        };
+
+        if (!body.text) {
+          sendJson(res, 400, { ok: false, error: "text is required" });
+          return;
+        }
+
+        const connector = body.connector ?? "chrome-extension";
+        const timeoutMs = body.timeoutMs ?? 5000;
+        const command = state.enqueueClick(connector, body.text, body.exact ?? false);
+        const denied = enforcePreferredTabPolicy(command);
+        if (denied) {
+          sendJson(res, 200, denied);
+          return;
+        }
+        const result = await state.waitForCommandResult(command.id, timeoutMs);
+
+        sendJson(res, 200, { command, result });
+        return;
+      }
+
+      if (method === "POST" && url === "/v1/commands/scroll") {
+        const body = (await readJson(req)) as {
+          connector?: string;
+          direction?: "up" | "down";
+          pages?: number;
+          timeoutMs?: number;
+        };
+
+        if (body.direction !== "up" && body.direction !== "down") {
+          sendJson(res, 400, { ok: false, error: "direction must be 'up' or 'down'" });
+          return;
+        }
+
+        const connector = body.connector ?? "chrome-extension";
+        const timeoutMs = body.timeoutMs ?? 5000;
+        const command = state.enqueueScroll(connector, body.direction, body.pages ?? 1);
+        const denied = enforcePreferredTabPolicy(command);
+        if (denied) {
+          sendJson(res, 200, denied);
+          return;
+        }
+        const result = await state.waitForCommandResult(command.id, timeoutMs);
+
+        sendJson(res, 200, { command, result });
+        return;
+      }
+
+      if (method === "POST" && url === "/v1/commands/type") {
+        const body = (await readJson(req)) as {
+          connector?: string;
+          text?: string;
+          clear?: boolean;
+          timeoutMs?: number;
+        };
+
+        if (!body.text) {
+          sendJson(res, 400, { ok: false, error: "text is required" });
+          return;
+        }
+
+        const connector = body.connector ?? "chrome-extension";
+        const timeoutMs = body.timeoutMs ?? 5000;
+        const command = state.enqueueType(connector, body.text, body.clear ?? false);
+        const denied = enforcePreferredTabPolicy(command);
+        if (denied) {
+          sendJson(res, 200, denied);
+          return;
+        }
         const result = await state.waitForCommandResult(command.id, timeoutMs);
 
         sendJson(res, 200, { command, result });
@@ -152,6 +316,11 @@ export async function startBridgeServer(host: string, port: number): Promise<voi
         const connector = body.connector ?? "chrome-extension";
         const timeoutMs = body.timeoutMs ?? 5000;
         const command = state.enqueueScanPage(connector);
+        const denied = enforcePreferredTabPolicy(command);
+        if (denied) {
+          sendJson(res, 200, denied);
+          return;
+        }
         const result = await state.waitForCommandResult(command.id, timeoutMs);
 
         sendJson(res, 200, { command, result });
@@ -167,6 +336,11 @@ export async function startBridgeServer(host: string, port: number): Promise<voi
         const connector = body.connector ?? "chrome-extension";
         const timeoutMs = body.timeoutMs ?? 5000;
         const command = state.enqueueCaptureScreenshot(connector);
+        const denied = enforcePreferredTabPolicy(command);
+        if (denied) {
+          sendJson(res, 200, denied);
+          return;
+        }
         const result = await state.waitForCommandResult(command.id, timeoutMs);
 
         sendJson(res, 200, { command, result });

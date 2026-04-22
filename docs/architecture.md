@@ -23,6 +23,7 @@ Responsibilities:
 2. Broker requests between MCP tools and the browser connector.
 3. Normalize errors and timeouts.
 4. Provide diagnostics.
+5. Optionally enforce simple domain allow/deny rules before queueing commands.
 
 ### Phase 1 HTTP Contract
 
@@ -51,6 +52,10 @@ Allowed:
 3. URL navigation
 4. Page scanning
 5. Page screenshot capture
+6. Narrow text-based click
+7. Narrow viewport-based scroll
+8. Focused-element typing
+9. Optional bridge-local domain allow/deny checks
 
 Deferred:
 
