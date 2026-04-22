@@ -64,8 +64,8 @@ The local bridge currently exposes:
 The repo now includes a first Chrome extension connector scaffold in:
 
 - `src/connectors/chrome-extension/background.ts`
-- `src/connectors/chrome-extension/content.ts`
 - `src/connectors/chrome-extension/snapshot.ts`
+- `src/connectors/chrome-extension/tab-target.ts`
 - `src/connectors/chrome-extension/manifest.json`
 
 Current behavior:
@@ -73,8 +73,8 @@ Current behavior:
 1. Query open `http` / `https` tabs
 2. Map them into the bridge snapshot format
 3. POST snapshots to the local bridge on install/startup/tab changes
-4. Poll bridge commands from visible tabs
-5. Execute `open_url` on the sender tab and report the result back to the bridge
+4. Poll bridge commands from the extension background worker
+5. Execute `open_url` on the active supported tab and report the result back to the bridge
 
 Current limitation:
 

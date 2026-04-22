@@ -1,11 +1,13 @@
 /// <reference types="chrome" />
 
 import { buildConnectorSnapshot } from "./snapshot.js";
+import { pickTargetTab } from "./tab-target.js";
 
 const BRIDGE_URL = "http://127.0.0.1:18767/v1/connector/snapshot";
 const NEXT_COMMAND_URL = "http://127.0.0.1:18767/v1/connector/next-command?connector=chrome-extension";
 const COMMAND_RESULT_URL = "http://127.0.0.1:18767/v1/connector/command-result";
 const CONNECTOR_NAME = "chrome-extension";
+const BRIDGE_POLL_ALARM = "real-browser-mcp-poll";
 
 async function listEligibleTabs(): Promise<chrome.tabs.Tab[]> {
   const tabs = await chrome.tabs.query({});
@@ -60,86 +62,91 @@ async function reportCommandResult(commandId: string, payload: {
   });
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type !== "poll-bridge") return;
+async function pollBridgeCommands(): Promise<void> {
+  try {
+    const response = await fetch(NEXT_COMMAND_URL);
+    const body = await response.json() as {
+      command: {
+        id: string;
+        kind: "open_url";
+        payload: { url: string };
+      } | null;
+    };
 
-  void (async () => {
-    try {
-      const response = await fetch(NEXT_COMMAND_URL);
-      const body = await response.json() as {
-        command: {
-          id: string;
-          kind: "open_url";
-          payload: { url: string };
-        } | null;
-      };
+    if (!body.command) return;
 
-      if (!body.command) {
-        sendResponse({ ok: true, command: null });
-        return;
-      }
+    const tabs = await listEligibleTabs();
+    const target = pickTargetTab(tabs);
 
-      if (!sender.tab?.id) {
-        await reportCommandResult(body.command.id, {
-          ok: false,
-          error: "No sender tab available for command execution",
-        });
-        sendResponse({ ok: false, command: body.command });
-        return;
-      }
-
-      if (body.command.kind === "open_url") {
-        await chrome.tabs.update(sender.tab.id, { url: body.command.payload.url });
-        await reportCommandResult(body.command.id, {
-          ok: true,
-          result: {
-            url: body.command.payload.url,
-            tabId: String(sender.tab.id),
-          },
-        });
-        sendResponse({ ok: true, command: body.command });
-        return;
-      }
-
+    if (!target?.id) {
       await reportCommandResult(body.command.id, {
         ok: false,
-        error: `Unsupported command kind: ${body.command.kind}`,
+        error: "No supported browser tab available for command execution",
       });
-      sendResponse({ ok: false, command: body.command });
-    } catch (err) {
-      console.warn("[real-browser-mcp][chrome-extension] command poll failed:", err);
-      sendResponse({
-        ok: false,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      return;
     }
-  })();
 
-  return true;
-});
+    if (body.command.kind === "open_url") {
+      await chrome.tabs.update(target.id, { url: body.command.payload.url, active: true });
+      await reportCommandResult(body.command.id, {
+        ok: true,
+        result: {
+          url: body.command.payload.url,
+          tabId: String(target.id),
+        },
+      });
+      return;
+    }
+
+    await reportCommandResult(body.command.id, {
+      ok: false,
+      error: `Unsupported command kind: ${body.command.kind}`,
+    });
+  } catch (err) {
+    console.warn("[real-browser-mcp][chrome-extension] bridge poll failed:", err);
+  }
+}
+
+function scheduleCommandPoll(): void {
+  void pollBridgeCommands();
+}
 
 chrome.runtime.onInstalled.addListener(() => {
+  chrome.alarms.create(BRIDGE_POLL_ALARM, { periodInMinutes: 0.1 });
+  scheduleCommandPoll();
   scheduleSnapshot();
 });
 
 chrome.runtime.onStartup.addListener(() => {
+  chrome.alarms.create(BRIDGE_POLL_ALARM, { periodInMinutes: 0.1 });
+  scheduleCommandPoll();
   scheduleSnapshot();
 });
 
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === BRIDGE_POLL_ALARM) {
+    scheduleCommandPoll();
+  }
+});
+
 chrome.tabs.onActivated.addListener(() => {
+  scheduleCommandPoll();
   scheduleSnapshot();
 });
 
 chrome.tabs.onCreated.addListener(() => {
+  scheduleCommandPoll();
   scheduleSnapshot();
 });
 
 chrome.tabs.onRemoved.addListener(() => {
+  scheduleCommandPoll();
   scheduleSnapshot();
 });
 
 chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
   if (changeInfo.status === "complete" || changeInfo.url !== undefined) {
+    scheduleCommandPoll();
     scheduleSnapshot();
   }
 });
