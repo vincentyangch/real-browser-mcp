@@ -1,5 +1,7 @@
 # real-browser-mcp
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 Alpha MCP server for interacting with a real logged-in Chrome session.
 
 This project is intended to provide a safer, narrower rewrite of the "real browser session" pattern:
@@ -27,6 +29,8 @@ Verified so far:
 - CCBuddy live smoke using the managed bridge path
 
 See `docs/security.md` and `docs/known-limitations.md` before connecting it to a broadly capable agent.
+
+Agents can follow `docs/agent-setup.md` for an install, extension setup, MCP registration, and smoke-test runbook.
 
 ## Quickstart
 
@@ -85,7 +89,7 @@ Codex CLI:
 
 ```bash
 codex mcp add real-browser \
-  --env REAL_BROWSER_MCP_ALLOWED_DOMAINS=linux.do \
+  --env REAL_BROWSER_MCP_ALLOWED_DOMAINS=yahoo.com \
   --env REAL_BROWSER_MCP_DENIED_DOMAINS=discord.com \
   -- node /absolute/path/to/real-browser-mcp/dist/cli.js mcp
 ```
@@ -94,7 +98,7 @@ Claude Code CLI:
 
 ```bash
 claude mcp add -s user \
-  -e REAL_BROWSER_MCP_ALLOWED_DOMAINS=linux.do \
+  -e REAL_BROWSER_MCP_ALLOWED_DOMAINS=yahoo.com \
   -e REAL_BROWSER_MCP_DENIED_DOMAINS=discord.com \
   real-browser -- node /absolute/path/to/real-browser-mcp/dist/cli.js mcp
 ```
@@ -112,7 +116,7 @@ ccbuddy:
           - "/absolute/path/to/real-browser-mcp/dist/cli.js"
           - "mcp"
         env:
-          REAL_BROWSER_MCP_ALLOWED_DOMAINS: "linux.do"
+          REAL_BROWSER_MCP_ALLOWED_DOMAINS: "yahoo.com"
           REAL_BROWSER_MCP_DENIED_DOMAINS: "discord.com"
 ```
 
@@ -126,7 +130,7 @@ Generic MCP JSON:
       "command": "node",
       "args": ["/absolute/path/to/real-browser-mcp/dist/cli.js", "mcp"],
       "env": {
-        "REAL_BROWSER_MCP_ALLOWED_DOMAINS": "linux.do",
+        "REAL_BROWSER_MCP_ALLOWED_DOMAINS": "yahoo.com",
         "REAL_BROWSER_MCP_DENIED_DOMAINS": "discord.com"
       }
     }
@@ -156,7 +160,7 @@ Optional bridge-local domain policy can be configured with environment variables
 - `REAL_BROWSER_MCP_ALLOWED_DOMAINS`
 - `REAL_BROWSER_MCP_DENIED_DOMAINS`
 
-Both variables accept comma-separated hostnames such as `linux.do,example.com`.
+Both variables accept comma-separated hostnames such as `yahoo.com,example.com`.
 
 Current matching rules:
 

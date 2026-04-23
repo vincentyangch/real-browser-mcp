@@ -14,6 +14,7 @@ Release channel: GitHub-only for the first alpha. npm publishing is intentionall
 - Live CCBuddy smoke passed using the managed bridge path without manually starting `bridge-serve`.
 - Release CCBuddy smoke repeated on 2026-04-23 using the managed bridge path.
 - Codex CLI smoke passed on 2026-04-23 using one-shot config overrides.
+- Claude Code CLI smoke completed on 2026-04-23.
 - Domain policy propagation was verified with `REAL_BROWSER_MCP_ALLOWED_DOMAINS=linux.do` and `REAL_BROWSER_MCP_DENIED_DOMAINS=discord.com`.
 - The Chrome extension observed real supported tabs from the user's logged-in Chrome session.
 
@@ -21,11 +22,10 @@ Release channel: GitHub-only for the first alpha. npm publishing is intentionall
 
 - Codex CLI: passed on 2026-04-23. It called `browser_status` and `browser_list_tabs`, returned `connected=true`, `tabs=2`, and reported the expected domain policy.
 - CCBuddy: passed on 2026-04-23. It called `real-browser/browser_status` and `real-browser/browser_list_tabs`, returned `connected=true`, `tabs=2`, and reported the expected domain policy.
-- Claude Code CLI: MCP configuration loaded and `real-browser` connected on 2026-04-23, but the model turn was blocked by local Claude auth with `403` and `Your organization does not have access to Claude`. Full tool-call smoke remains blocked until Claude auth is restored or a usable Claude model/provider is configured.
+- Claude Code CLI: passed on 2026-04-23. Smoke completed after Claude auth was restored.
 
 ## Release Blockers
 
-- Decide whether the Claude Code CLI auth-blocked smoke is acceptable for `v0.1.0-alpha`, or rerun after Claude auth is restored.
 - Tag `v0.1.0-alpha` and create a GitHub release.
 
 ## Documentation Tasks
@@ -62,7 +62,7 @@ Release channel: GitHub-only for the first alpha. npm publishing is intentionall
 - Run host smoke matrix:
   - CCBuddy: verified on 2026-04-23.
   - Codex CLI: verified on 2026-04-23.
-  - Claude Code CLI: MCP config verified on 2026-04-23; full tool-call smoke blocked by Claude auth.
+  - Claude Code CLI: verified on 2026-04-23.
   - OpenClaw: verify only if the specific OpenClaw client supports stdio MCP.
   - Hermes: verify only if the specific Hermes client supports stdio MCP.
 - Run policy smoke:
@@ -79,7 +79,6 @@ This release is alpha. It intentionally does not expose raw JavaScript execution
 ## Suggested Execution Order
 
 1. Run local verification.
-2. Decide whether to accept the Claude Code CLI auth-blocked result or rerun after auth is fixed.
-3. Commit and push release docs.
-4. Tag `v0.1.0-alpha`.
-5. Create the GitHub release.
+2. Commit and push release docs.
+3. Tag `v0.1.0-alpha`.
+4. Create the GitHub release.

@@ -37,7 +37,7 @@ Current intentional exclusions:
 Optional bridge-local domain policy can be configured with environment variables:
 
 ```bash
-REAL_BROWSER_MCP_ALLOWED_DOMAINS=linux.do,example.com
+REAL_BROWSER_MCP_ALLOWED_DOMAINS=yahoo.com,example.com
 REAL_BROWSER_MCP_DENIED_DOMAINS=discord.com
 ```
 
