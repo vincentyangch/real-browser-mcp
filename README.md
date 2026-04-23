@@ -26,8 +26,23 @@ npm run build
 
 - `bridge-serve`: starts the local bridge server on `127.0.0.1:18767`
 - `doctor`: queries the local bridge and prints status JSON
-- `mcp`: starts the stdio MCP server
+- `mcp`: starts the stdio MCP server and, by default, auto-starts the local bridge if one is not already healthy
 - `build`: compiles the server and packages a loadable unpacked extension into `dist/chrome-extension/`
+
+## Bridge Lifecycle
+
+`real-browser-mcp mcp` uses `REAL_BROWSER_MCP_BRIDGE_MODE=auto` by default:
+
+1. If a healthy bridge already exists at `REAL_BROWSER_MCP_BRIDGE_HOST` / `REAL_BROWSER_MCP_BRIDGE_PORT`, the MCP server reuses it.
+2. If no healthy bridge exists, the MCP server starts an in-process managed bridge.
+3. Managed bridges use the same domain policy environment as the MCP server, so hosts such as CCBuddy only need one external MCP entry for the normal path.
+4. If allow/deny policy is configured but an existing bridge does not report the same policy, startup fails instead of silently bypassing the requested policy.
+
+Optional bridge lifecycle modes:
+
+- `REAL_BROWSER_MCP_BRIDGE_MODE=auto`: reuse an existing bridge or start one if missing
+- `REAL_BROWSER_MCP_BRIDGE_MODE=managed`: always start an in-process bridge and fail if the port is occupied
+- `REAL_BROWSER_MCP_BRIDGE_MODE=external`: require a separately launched bridge
 
 ## Domain Policy
 

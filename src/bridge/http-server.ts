@@ -1,11 +1,19 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { DEFAULT_DOMAIN_POLICY } from "../config.js";
+import { DEFAULT_DOMAIN_POLICY, bridgeBaseUrl } from "../config.js";
 import {
   describeDomainPolicy,
   evaluateDomainPolicy,
+  type DomainPolicy,
 } from "../policy/domain-policy.js";
 import { BridgeState } from "./state.js";
 import type { BridgeCommand, BridgeCommandResult, ConnectorSnapshot } from "./types.js";
+
+export type BridgeServerHandle = {
+  host: string;
+  port: number;
+  url: string;
+  close: () => Promise<void>;
+};
 
 function sendJson(res: ServerResponse, statusCode: number, payload: unknown): void {
   const text = JSON.stringify(payload, null, 2);
@@ -51,14 +59,21 @@ function immediateFailure(
   };
 }
 
-export async function startBridgeServer(host: string, port: number): Promise<void> {
-  const policySummary = describeDomainPolicy(DEFAULT_DOMAIN_POLICY);
+export async function startBridgeServer(
+  host: string,
+  port: number,
+  options: {
+    domainPolicy?: DomainPolicy;
+  } = {},
+): Promise<BridgeServerHandle> {
+  const domainPolicy = options.domainPolicy ?? DEFAULT_DOMAIN_POLICY;
+  const policySummary = describeDomainPolicy(domainPolicy);
   const state = new BridgeState({
     statusNotes: policySummary ? [policySummary] : [],
   });
 
   const enforceUrlPolicy = (command: BridgeCommand, url: string) => {
-    const decision = evaluateDomainPolicy(DEFAULT_DOMAIN_POLICY, url);
+    const decision = evaluateDomainPolicy(domainPolicy, url);
     if (decision.ok) return null;
 
     return immediateFailure(command, decision.reason);
@@ -364,5 +379,25 @@ export async function startBridgeServer(host: string, port: number): Promise<voi
     });
   });
 
-  console.error(`[real-browser-mcp] bridge listening on http://${host}:${port}`);
+  const address = server.address();
+  const resolvedPort = address && typeof address === "object" ? address.port : port;
+  const url = bridgeBaseUrl(host, resolvedPort);
+
+  console.error(`[real-browser-mcp] bridge listening on ${url}`);
+
+  return {
+    host,
+    port: resolvedPort,
+    url,
+    close: () => new Promise<void>((resolve, reject) => {
+      server.close((err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve();
+      });
+    }),
+  };
 }

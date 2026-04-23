@@ -418,6 +418,7 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === BRIDGE_POLL_ALARM) {
     scheduleCommandPoll();
+    scheduleSnapshot();
   }
 });
 

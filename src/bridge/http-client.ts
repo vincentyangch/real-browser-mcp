@@ -1,6 +1,10 @@
 import { bridgeBaseUrl } from "../config.js";
 import type { BridgeCommand, BridgeCommandResult, BridgeSnapshotResponse, BridgeStatus } from "./types.js";
 
+type RequestOptions = {
+  timeoutMs?: number;
+};
+
 async function parseJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
@@ -18,8 +22,10 @@ export class BridgeClient {
     return bridgeBaseUrl(this.host, this.port);
   }
 
-  async getStatus(): Promise<BridgeStatus> {
-    const res = await fetch(`${this.baseUrl}/health`);
+  async getStatus(options: RequestOptions = {}): Promise<BridgeStatus> {
+    const res = await fetch(`${this.baseUrl}/health`, {
+      signal: options.timeoutMs ? AbortSignal.timeout(options.timeoutMs) : undefined,
+    });
     return parseJson<BridgeStatus>(res);
   }
 

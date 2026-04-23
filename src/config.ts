@@ -9,6 +9,17 @@ export const DEFAULT_BRIDGE_PORT = Number.parseInt(
   10,
 );
 
+export type BridgeLifecycleMode = "auto" | "external" | "managed";
+
+export function parseBridgeLifecycleMode(value: string | undefined): BridgeLifecycleMode {
+  if (value === "external" || value === "managed") return value;
+  return "auto";
+}
+
+export const DEFAULT_BRIDGE_LIFECYCLE_MODE = parseBridgeLifecycleMode(
+  process.env.REAL_BROWSER_MCP_BRIDGE_MODE,
+);
+
 function parseDomainList(value: string | undefined): string[] {
   if (!value) return [];
   return normalizeDomainRules(value.split(","));

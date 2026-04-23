@@ -42,6 +42,18 @@ Responsibilities:
 1. Expose a minimal tool surface.
 2. Keep tool schemas stable.
 3. Avoid embedding product-specific policy.
+4. Own the local bridge lifecycle when running in managed or auto mode.
+
+### Bridge Lifecycle Modes
+
+`mcp` defaults to `REAL_BROWSER_MCP_BRIDGE_MODE=auto`.
+
+1. `auto` reuses a healthy bridge if one is already listening, otherwise starts an in-process managed bridge.
+2. `managed` always starts an in-process bridge and fails if the configured host/port is occupied.
+3. `external` requires a separately launched `bridge-serve` process.
+
+For CCBuddy, the intended normal path is one external MCP server entry that runs `real-browser-mcp mcp`. The managed bridge receives the same environment variables as the MCP server, including the optional allow/deny domain policy.
+When allow/deny policy is configured, `auto` mode only reuses an existing bridge if `/health` reports the same policy summary.
 
 ## Phase 1 Safety Boundary
 
