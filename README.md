@@ -1,6 +1,6 @@
 # real-browser-mcp
 
-MCP server for interacting with a real logged-in browser session.
+Alpha MCP server for interacting with a real logged-in Chrome session.
 
 This project is intended to provide a safer, narrower rewrite of the "real browser session" pattern:
 
@@ -15,6 +15,56 @@ Initial goals:
 3. Expose a minimal, audit-friendly MCP tool surface.
 4. Keep risky capabilities gated or out of scope by default.
 
+## Alpha Status
+
+`real-browser-mcp` is ready for early local alpha use by MCP-capable agents, including CCBuddy. It is not yet a stable public API.
+
+Verified so far:
+
+- `npm test`
+- `npm run typecheck`
+- `npm run build`
+- CCBuddy live smoke using the managed bridge path
+
+See `docs/security.md` and `docs/known-limitations.md` before connecting it to a broadly capable agent.
+
+## Quickstart
+
+Prerequisites:
+
+- Node.js 22 or newer
+- Google Chrome
+- An MCP-capable local agent host
+
+Build the server and unpacked Chrome extension:
+
+```bash
+git clone https://github.com/vincentyangch/real-browser-mcp.git
+cd real-browser-mcp
+npm install
+npm run build
+```
+
+Load the Chrome extension:
+
+1. Open `chrome://extensions`.
+2. Enable Developer mode.
+3. Click Load unpacked.
+4. Select `dist/chrome-extension`.
+5. Confirm the extension is enabled and has site access for the sites you want to use.
+
+Check bridge status:
+
+```bash
+node dist/cli.js doctor
+```
+
+Run as a stdio MCP server:
+
+```bash
+node dist/cli.js mcp
+```
+
 ## Commands
 
 ```bash
@@ -28,6 +78,61 @@ npm run build
 - `doctor`: queries the local bridge and prints status JSON
 - `mcp`: starts the stdio MCP server and, by default, auto-starts the local bridge if one is not already healthy
 - `build`: compiles the server and packages a loadable unpacked extension into `dist/chrome-extension/`
+
+## MCP Host Examples
+
+Codex CLI:
+
+```bash
+codex mcp add real-browser \
+  --env REAL_BROWSER_MCP_ALLOWED_DOMAINS=linux.do \
+  --env REAL_BROWSER_MCP_DENIED_DOMAINS=discord.com \
+  -- node /absolute/path/to/real-browser-mcp/dist/cli.js mcp
+```
+
+Claude Code CLI:
+
+```bash
+claude mcp add -s user \
+  -e REAL_BROWSER_MCP_ALLOWED_DOMAINS=linux.do \
+  -e REAL_BROWSER_MCP_DENIED_DOMAINS=discord.com \
+  real-browser -- node /absolute/path/to/real-browser-mcp/dist/cli.js mcp
+```
+
+CCBuddy:
+
+```yaml
+ccbuddy:
+  agent:
+    external_mcp_servers:
+      - name: "real-browser"
+        command: "/usr/bin/env"
+        args:
+          - "node"
+          - "/absolute/path/to/real-browser-mcp/dist/cli.js"
+          - "mcp"
+        env:
+          REAL_BROWSER_MCP_ALLOWED_DOMAINS: "linux.do"
+          REAL_BROWSER_MCP_DENIED_DOMAINS: "discord.com"
+```
+
+Generic MCP JSON:
+
+```json
+{
+  "mcpServers": {
+    "real-browser": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/absolute/path/to/real-browser-mcp/dist/cli.js", "mcp"],
+      "env": {
+        "REAL_BROWSER_MCP_ALLOWED_DOMAINS": "linux.do",
+        "REAL_BROWSER_MCP_DENIED_DOMAINS": "discord.com"
+      }
+    }
+  }
+}
+```
 
 ## Bridge Lifecycle
 
@@ -78,7 +183,7 @@ The local bridge currently exposes:
 - `POST /v1/commands/scan-page`
 - `POST /v1/commands/capture-screenshot`
 
-`POST /v1/connector/snapshot` is the first browser-connector integration point. A future browser-side connector should send:
+`POST /v1/connector/snapshot` is the browser-connector integration point. The Chrome extension sends snapshots like:
 
 ```json
 {
@@ -156,3 +261,11 @@ Deferred for later phases:
 
 Policy such as user approvals, role gating, and domain restrictions should be enforced by the consuming agent host, such as CCBuddy.
 This repo now also supports an optional bridge-local allow/deny layer as a safety backstop for basic domain control.
+
+## Release Planning
+
+See `docs/release-todos.md` for the `v0.1.0-alpha` release checklist.
+
+## License
+
+MIT. See `LICENSE`.
